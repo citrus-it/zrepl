@@ -86,7 +86,7 @@ docs-clean:
 
 .PHONY: $(RELEASE_BINS)
 # TODO: two wildcards possible
-$(RELEASE_BINS): $(ARTIFACTDIR)/zrepl-%: $(ARTIFACTDIR) # generate # vet test lint
+$(RELEASE_BINS): $(ARTIFACTDIR)/zrepl-%: generate $(ARTIFACTDIR) vet test lint
 	STEM=$*; GOOS="$${STEM%%-*}"; GOARCH="$${STEM##*-}"; export GOOS GOARCH; \
 		$(GO_BUILD) -o "$(ARTIFACTDIR)/zrepl-$$GOOS-$$GOARCH"
 
