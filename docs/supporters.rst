@@ -26,4 +26,5 @@ We would like to thank the following people / organizations for supporting zrepl
 * `Justin Scholz <https://github.com/JMoVS>`_
 * `InsanePrawn <https://github.com/InsanePrawn>`_
 * `Ben Woods <https://www.freshports.org/sysutils/zrepl/>`_
+* `Janis Streib <https://github.com/janisstreib>`_
 * `Anton Schirg <https://github.com/antonxy>`_
