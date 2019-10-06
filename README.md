@@ -1,8 +1,9 @@
 [![GitHub license](https://img.shields.io/github/license/zrepl/zrepl.svg)](https://github.com/zrepl/zrepl/blob/master/LICENSE)
 [![Language: Go](https://img.shields.io/badge/language-Go-6ad7e5.svg)](https://golang.org/)
 [![User Docs](https://img.shields.io/badge/docs-web-blue.svg)](https://zrepl.github.io)
-[![Donate via PayPal](https://img.shields.io/badge/donate-paypal-yellow.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=R5QSXJVYHGX96)
+[![Donate via Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.herokuapp.com%2Fzrepl%2Fpledges&style=flat&color=yellow)](https://www.patreon.com/zrepl)
 [![Donate via Liberapay](https://img.shields.io/liberapay/receives/zrepl.svg?logo=liberapay)](https://liberapay.com/zrepl/donate)
+[![Donate via PayPal](https://img.shields.io/badge/donate-paypal-yellow.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=R5QSXJVYHGX96)
 [![Twitter](https://img.shields.io/twitter/url/https/github.com/zrepl/zrepl.svg?style=social)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fzrepl%2Fzrepl)
 
 # zrepl
@@ -23,6 +24,7 @@ zrepl is a one-stop ZFS backup & replication solution.
    If so, think of an expressive configuration example.
 2. Think of at least one use case that generalizes from your concrete application.
 3. Open an issue on GitHub with example conf & use case attached.
+4. **Optional**: [Post a bounty](https://www.bountysource.com/teams/zrepl) on the issue, or [contact Christian Schwarz](https://cschwarz.com) for contract work.
 
 The above does not apply if you already implemented everything.
 Check out the *Coding Workflow* section below for details.
@@ -47,11 +49,6 @@ The documentation is written in [ReStructured Text](http://docutils.sourceforge.
 
 To get started, run `./lazy.sh devsetup` to easily install build dependencies and read `docs/installation.rst -> Compiling from Source`.
 
-### Overall Architecture
-
-The application architecture is documented as part of the user docs in the *Implementation* section (`docs/content/impl`).
-Make sure to develop an understanding how zrepl is typically used by studying the user docs first.
-
 ### Project Structure
 
 ```
@@ -62,6 +59,7 @@ Make sure to develop an understanding how zrepl is typically used by studying th
 │   └── samples
 ├── daemon                  # the implementation of `zrepl daemon` subcommand
 │   ├── filters
+│   ├── hooks               # snapshot hooks
 │   ├── job                 # job implementations
 │   ├── logging             # logging outlets + formatters
 │   ├── nethelpers
@@ -99,7 +97,6 @@ Make sure to develop an understanding how zrepl is typically used by studying th
 │   ├── tcp
 │   └── tls
 ├── util
-├── vendor                  # managed by dep
 ├── version                 # abstraction for versions (filled during build by Makefile)
 └── zfs                     # zfs(8) wrappers
 ```
