@@ -1,0 +1,9 @@
+Source: zrepl
+Maintainer: Christian Schwarz <me@cschwarz.com>
+Build-Depends: dh-exec
+
+Package: zrepl
+Architecture: amd64
+Description: ZFS replication
+  zrepl is a one-stop solution for ZFS filesystem replication
+

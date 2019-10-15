@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	# no-op
+
+override_dh_auto_build:
+	# pre-built, dont' rebuild it
+	
+override_dh_auto_install:
+	# install the zrepl.service for
+	# dh_install_systemd and dh_systemd_{start,enable}
+	install dist/systemd/zrepl.service debian/zrepl.service
+	
+	dh_install artifacts/zrepl usr/bin
+
+	dh_install artifacts/bash_completion etc/bash_completion.d/zrepl
+
+	# install docs
+	dh_install artifacts/docs/html usr/share/doc/zrepl/docs/
+
+	# install examples
+	dh_install config/samples/* usr/share/doc/zrepl/examples
+
+override_dh_auto_test:
+	# don't run tests at this point
