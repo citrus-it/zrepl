@@ -6,6 +6,7 @@
 override_dh_auto_clean:
 	# no-op
 
+override_dh_strip:
 override_dh_auto_build:
 	# pre-built, dont' rebuild it
 	
@@ -13,8 +14,8 @@ override_dh_auto_install:
 	# install the zrepl.service for
 	# dh_install_systemd and dh_systemd_{start,enable}
 	install dist/systemd/zrepl.service debian/zrepl.service
-	
-	dh_install artifacts/zrepl usr/bin
+
+	dh_install artifacts/zrepl-linux-$(DEB_HOST_ARCH) usr/bin
 
 	dh_install artifacts/bash_completion etc/bash_completion.d/zrepl
 

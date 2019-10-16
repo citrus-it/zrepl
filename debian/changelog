@@ -1,4 +1,12 @@
-zrepl (0.2.1) UNRELEASED; urgency=medium
+zrepl (0.2.1-2) zrepl-stable; urgency=medium
+
+    * ARM64 support
+
+zrepl (0.2.1-1) zrepl-stable; urgency=medium
+
+    * 0.2.1-1 release
+
+zrepl (0.2.1) zrepl-linux; urgency=medium
 
   * 0.2.1 release
 

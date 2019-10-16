@@ -24,7 +24,7 @@ if [ -z "$GOPATH" ]; then
     exit 1
 fi
 
-CHECKOUTPATH="${GOPATH}/src/github.com/zrepl/zrepl"
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 godep() {
     step "install build dependencies (versions pinned using go.mod and tools.go)"
@@ -48,7 +48,7 @@ docdep() {
         exit 1
     fi
     step "Installing doc build dependencies"
-    local reqpath="${CHECKOUTPATH}/docs/requirements.txt"
+    local reqpath="docs/requirements.txt"
     if [ ! -z "$ZREPL_LAZY_DOCS_REQPATH" ]; then
         reqpath="$ZREPL_LAZY_DOCS_REQPATH"
     fi
