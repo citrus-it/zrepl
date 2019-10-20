@@ -24,6 +24,8 @@ RELEASE_BINS := $(ARTIFACTDIR)/zrepl-freebsd-amd64
 RELEASE_BINS += $(ARTIFACTDIR)/zrepl-linux-amd64
 RELEASE_BINS += $(ARTIFACTDIR)/zrepl-linux-arm64
 RELEASE_BINS += $(ARTIFACTDIR)/zrepl-darwin-amd64
+RELEASE_BINS += $(ARTIFACTDIR)/zrepl-illumos-amd64
+RELEASE_BINS += $(ARTIFACTDIR)/zrepl-solaris-amd64
 
 RELEASE_NOARCH := $(ARTIFACTDIR)/zrepl-noarch.tar
 THIS_PLATFORM_RELEASE_BIN := $(shell bash -c 'source <($(GO) env) && echo "zrepl-$${GOOS}-$${GOARCH}"' )
@@ -54,6 +56,8 @@ vet:
 	GOOS=linux		GOARCH=amd64 	$(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
 	GOOS=linux		GOARCH=arm64 	$(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
 	GOOS=darwin		GOARCH=amd64 	$(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
+	GOOS=illumos    GOARCH=amd64    $(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
+	GOOS=solaris    GOARCH=amd64    $(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
 
 ZREPL_PLATFORMTEST_POOLNAME := zreplplatformtest
 ZREPL_PLATFORMTEST_IMAGEPATH := /tmp/zreplplatformtest.pool.img
@@ -87,7 +91,7 @@ docs-clean:
 
 .PHONY: $(RELEASE_BINS)
 # TODO: two wildcards possible
-$(RELEASE_BINS): $(ARTIFACTDIR)/zrepl-%: generate $(ARTIFACTDIR) vet test lint
+$(RELEASE_BINS): $(ARTIFACTDIR)/zrepl-%: $(ARTIFACTDIR) vet test lint
 	STEM=$*; GOOS="$${STEM%%-*}"; GOARCH="$${STEM##*-}"; export GOOS GOARCH; \
 		$(GO_BUILD) -o "$(ARTIFACTDIR)/zrepl-$$GOOS-$$GOARCH"
 
