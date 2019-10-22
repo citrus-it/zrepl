@@ -179,25 +179,10 @@ func buildIovecs(buffers net.Buffers) (totalLen int64, vecs []syscall.Iovec) {
 // then + io.EOF is returned. This behavior is different to io.ReadFull
 // which returns io.ErrUnexpectedEOF.
 func (c Conn) ReadvFull(buffers net.Buffers) (n int64, err error) {
-	totalLen, iovecs := buildIovecs(buffers)
-	if debugReadvNoShortReadsAssertEnable {
-		defer debugReadvNoShortReadsAssert(totalLen, n, err)
-	}
-	scc, ok := c.Wire.(SyscallConner)
-	if !ok {
-		return c.readvFallback(buffers)
-	}
-	raw, err := scc.SyscallConn()
-	if err == SyscallConnNotSupported {
-		return c.readvFallback(buffers)
-	}
-	if err != nil {
-		return 0, err
-	}
-	n, err = c.readv(raw, iovecs)
-	return
+	return c.readv(buffers)
 }
 
+// invoked by c.readv if readv system call cannot be used
 func (c Conn) readvFallback(nbuffers net.Buffers) (n int64, err error) {
 	buffers := [][]byte(nbuffers)
 	for i := range buffers {

@@ -10,7 +10,22 @@ import (
 	"unsafe"
 )
 
-func (c Conn) readv(rawConn syscall.RawConn, iovecs []syscall.Iovec) (n int64, err error) {
+func (c Conn) readv(buffers net.Buffers) (n int64, err error) {
+
+	scc, ok := c.Wire.(SyscallConner)
+	if !ok {
+		return c.readvFallback(buffers)
+	}
+	rawConn, err := scc.SyscallConn()
+	if err == SyscallConnNotSupported {
+		return c.readvFallback(buffers)
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	_, iovecs := buildIovecs(buffers)
+
 	for len(iovecs) > 0 {
 		if err := c.renewReadDeadline(); err != nil {
 			return n, err
