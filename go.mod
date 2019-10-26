@@ -14,8 +14,8 @@ require (
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.8
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // // go1.12 mod tidy adds this dependency as 'indirect', but go1.13 mod tidy removes it if the trailing comment is 'indirect' => add this comment to make the build work without changing go.mod on both go1.12 and go1.13
+	github.com/modern-go/reflect2 v1.0.1 // go1.12 mod tidy adds this dependency as 'indirect', but go1.13 mod tidy removes it if the trailing comment is 'indirect' => add this comment to make the build work without changing go.mod on both go1.12 and go1.13
 	github.com/montanaflynn/stats v0.5.0
 	github.com/onsi/ginkgo v1.10.2 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
