@@ -10,6 +10,25 @@ import (
 	"unsafe"
 )
 
+func buildIovecs(buffers net.Buffers) (totalLen int64, vecs []syscall.Iovec) {
+	vecs = make([]syscall.Iovec, 0, len(buffers))
+	for i := range buffers {
+		totalLen += int64(len(buffers[i]))
+		if len(buffers[i]) == 0 {
+			continue
+		}
+
+		v := syscall.Iovec{
+			Base: &buffers[i][0],
+		}
+		// syscall.Iovec.Len has platform-dependent size, thus use SetLen
+		v.SetLen(len(buffers[i]))
+
+		vecs = append(vecs, v)
+	}
+	return totalLen, vecs
+}
+
 func (c Conn) readv(buffers net.Buffers) (n int64, err error) {
 
 	scc, ok := c.Wire.(SyscallConner)

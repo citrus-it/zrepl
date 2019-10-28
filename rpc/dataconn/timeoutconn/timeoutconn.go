@@ -154,21 +154,6 @@ type SyscallConner interface {
 
 var _ SyscallConner = (*net.TCPConn)(nil)
 
-func buildIovecs(buffers net.Buffers) (totalLen int64, vecs []syscall.Iovec) {
-	vecs = make([]syscall.Iovec, 0, len(buffers))
-	for i := range buffers {
-		totalLen += int64(len(buffers[i]))
-		if len(buffers[i]) == 0 {
-			continue
-		}
-
-		v := makeIovec(buffers[i])
-
-		vecs = append(vecs, v)
-	}
-	return totalLen, vecs
-}
-
 // Reads the given buffers full:
 // Think of io.ReadvFull, but for net.Buffers + using the readv syscall.
 //

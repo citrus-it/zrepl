@@ -1,4 +1,5 @@
 .PHONY: generate build test vet cover release docs docs-clean clean format lint platformtest
+.PHONY: release bins-all release-noarch
 .DEFAULT_GOAL := build
 
 ARTIFACTDIR := artifacts
@@ -16,103 +17,43 @@ endif
 GO := go
 GOOS ?= $(shell bash -c 'source <($(GO) env) && echo "$$GOOS"')
 GOARCH ?= $(shell bash -c 'source <($(GO) env) && echo "$$GOARCH"')
+GOHOSTOS ?= $(shell bash -c 'source <($(GO) env) && echo "$$GOHOSTOS"')
+GOHOSTARCH ?= $(shell bash -c 'source <($(GO) env) && echo "$$GOHOSTARCH"')
 GO_ENV_VARS := GO111MODULE=on
 GO_LDFLAGS := "-X github.com/zrepl/zrepl/version.zreplVersion=$(_ZREPL_VERSION)"
 GO_MOD_READONLY := -mod=readonly
 GO_BUILDFLAGS := $(GO_MOD_READONLY)
 GO_BUILD := $(GO_ENV_VARS) $(GO) build $(GO_BUILDFLAGS) -ldflags $(GO_LDFLAGS)
+GOLANGCI_LINT := golangci-lint
+
+RELEASE_NOARCH := $(ARTIFACTDIR)/zrepl-noarch.tar
 
 .PHONY: printvars
 printvars:
 	@echo GOOS=$(GOOS)
 	@echo GOARCH=$(GOARCH)
 
-.PHONY: release release-bins-all release-noarch
-RELEASE_PER_ARCH_TARGETS := release-bin vet lint
-release:
-	$(MAKE) release-bins-all
+
+##################### PRODUCING A RELEASE #############
+.PHONY: release wrapup-and-checksum check-git-clean clean
+
+release: clean
+ 	# no cross-platform support for target test
+	# $(MAKE) test
+	$(MAKE) bins-all
 	$(MAKE) $(RELEASE_NOARCH)
 	$(MAKE) check-git-clean
-release-bins-all:
-	$(MAKE) release-bin vet lint GOOS=freebsd   GOARCH=amd64
-	$(MAKE) release-bin vet lint GOOS=freebsd   GOARCH=386
-	$(MAKE) release-bin vet lint GOOS=linux     GOARCH=amd64
-	$(MAKE) release-bin vet lint GOOS=linux     GOARCH=arm64
-	$(MAKE) release-bin vet lint GOOS=linux     GOARCH=386
-	$(MAKE) release-bin vet lint GOOS=darwin    GOARCH=amd64
-	$(MAKE) release-bin vet lint GOOS=illumos   GOARCH=amd64
-	$(MAKE) release-bin vet lint GOOS=solaris   GOARCH=amd64
+	$(MAKE) wrapup-and-checksum
+	@echo "ZREPL RELEASE ARTIFACTS AVAILABLE IN artifacts/"
 
-RELEASE_NOARCH := $(ARTIFACTDIR)/zrepl-noarch.tar
-THIS_PLATFORM_RELEASE_BIN := $(shell bash -c 'source <($(GO) env) && echo "zrepl-$${GOOS}-$${GOARCH}"' )
-
-generate: #not part of the build, must do that manually
-	protoc -I=replication/logic/pdu --go_out=plugins=grpc:replication/logic/pdu replication/logic/pdu/pdu.proto
-	$(GO_ENV_VARS) $(GO) generate $(GO_BUILDFLAGS) -x ./...
-
-format:
-	goimports -srcdir . -local 'github.com/zrepl/zrepl' -w $(shell find . -type f -name '*.go' -not -path "./vendor/*" -not -name '*.pb.go' -not -name '*_enumer.go')
-
-lint:
-	$(GO_ENV_VARS) golangci-lint run ./...
-
-test:
-	$(GO_ENV_VARS) $(GO) test $(GO_BUILDFLAGS) ./...
-
-vet:
-	$(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
-
-ZREPL_PLATFORMTEST_POOLNAME := zreplplatformtest
-ZREPL_PLATFORMTEST_IMAGEPATH := /tmp/zreplplatformtest.pool.img
-$(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH):
-	$(GO_BUILD) -o "$@" ./platformtest/harness
-platformtest: $(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH)
-	"$(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH)" -poolname "$(ZREPL_PLATFORMTEST_POOLNAME)" -imagepath "$(ZREPL_PLATFORMTEST_IMAGEPATH)"
-
-$(ARTIFACTDIR):
-	mkdir -p "$@"
-
-$(ARTIFACTDIR)/docs: $(ARTIFACTDIR)
-	mkdir -p "$@"
-
-$(ARTIFACTDIR)/bash_completion: release-bin
-	artifacts/$(THIS_PLATFORM_RELEASE_BIN) bashcomp "$@"
-
-.PHONY: $(ARTIFACTDIR)/go_env.txt
-$(ARTIFACTDIR)/go_env.txt:
-	$(GO_ENV_VARS) $(GO) env > $@
-
-docs: $(ARTIFACTDIR)/docs
-	make -C docs \
-		html \
-		BUILDDIR=../artifacts/docs \
-
-docs-clean:
-	make -C docs \
-		clean \
-		BUILDDIR=../artifacts/docs
-
-.PHONY: release-bin
-release-bin:
-	$(GO_BUILD) -o "$(ARTIFACTDIR)/zrepl-$(GOOS)-$(GOARCH)"
-
-$(RELEASE_NOARCH): docs $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_version.txt
-	tar --mtime='1970-01-01' --sort=name \
-		--transform 's/$(ARTIFACTDIR)/zrepl-$(_ZREPL_VERSION)-noarch/' \
-		--transform 's#dist#zrepl-$(_ZREPL_VERSION)-noarch/dist#' \
-		--transform 's#config/samples#zrepl-$(_ZREPL_VERSION)-noarch/config#' \
-		-acf $@ \
-		$(ARTIFACTDIR)/docs/html \
-		$(ARTIFACTDIR)/bash_completion \
-		$(ARTIFACTDIR)/go_version.txt \
-		dist \
-		config/samples
-
-release-old: $(RELEASE_BINS) $(RELEASE_NOARCH)
+# expects `release` target to have run before
+wrapup-and-checksum: $(ARTIFACTDIR)/* $(RELEASE_NOARCH)
 	rm -rf "$(ARTIFACTDIR)/release"
 	mkdir -p "$(ARTIFACTDIR)/release"
-	cp $^ "$(ARTIFACTDIR)/release"
+	cp -l $^ "$(ARTIFACTDIR)/release"
 	cd "$(ARTIFACTDIR)/release" && sha512sum $$(ls | sort) > sha512sum.txt
+
+check-git-clean:
 	@# note that we use ZREPL_VERSION and not _ZREPL_VERSION because we want to detect the override
 	@if git describe --always --dirty 2>/dev/null | grep dirty >/dev/null; then \
         echo '[INFO] either git reports checkout is dirty or git is not installed or this is not a git checkout'; \
@@ -127,3 +68,84 @@ release-old: $(RELEASE_BINS) $(RELEASE_NOARCH)
 
 clean: docs-clean
 	rm -rf "$(ARTIFACTDIR)"
+
+##################### BINARIES #####################
+.PHONY: bins-all lint test vet zrepl-bin platformtest-bin
+
+BINS_ALL_TARGETS := zrepl-bin platformtest-bin vet lint
+bins-all:
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=freebsd   GOARCH=amd64
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=freebsd   GOARCH=386
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=linux     GOARCH=amd64
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=linux     GOARCH=arm64
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=linux     GOARCH=386
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=darwin    GOARCH=amd64
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=illumos   GOARCH=amd64
+	$(MAKE) $(BINS_ALL_TARGETS) GOOS=solaris   GOARCH=amd64
+
+lint:
+	$(GO_ENV_VARS) $(GOLANGCI_LINT) run ./...
+test:
+	$(GO_ENV_VARS) $(GO) test $(GO_BUILDFLAGS) ./...
+vet:
+	$(GO_ENV_VARS) $(GO) vet $(GO_BUILDFLAGS) ./...
+
+zrepl-bin:
+	$(GO_BUILD) -o "$(ARTIFACTDIR)/zrepl-$(GOOS)-$(GOARCH)"
+
+platformtest-bin:
+		$(GO_BUILD) -o "$(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH)" ./platformtest/harness
+
+##################### DEV TARGETS #####################
+# not part of the build, must do that manually
+.PHONY: generate format platformtest
+
+generate: 
+	protoc -I=replication/logic/pdu --go_out=plugins=grpc:replication/logic/pdu replication/logic/pdu/pdu.proto
+	$(GO_ENV_VARS) $(GO) generate $(GO_BUILDFLAGS) -x ./...
+
+format:
+	goimports -srcdir . -local 'github.com/zrepl/zrepl' -w $(shell find . -type f -name '*.go' -not -path "./vendor/*" -not -name '*.pb.go' -not -name '*_enumer.go')
+
+ZREPL_PLATFORMTEST_POOLNAME := zreplplatformtest
+ZREPL_PLATFORMTEST_IMAGEPATH := /tmp/zreplplatformtest.pool.img
+platformtest: # do not track dependency on platformtest-bin to allow build of platformtest outside of test VM
+	"$(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH)" -poolname "$(ZREPL_PLATFORMTEST_POOLNAME)" -imagepath "$(ZREPL_PLATFORMTEST_IMAGEPATH)"
+
+##################### NOARCH #####################
+.PHONY: $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt docs docs-clean $(RELEASE_NOARCH)
+
+$(ARTIFACTDIR):
+	mkdir -p "$@"
+$(ARTIFACTDIR)/docs: $(ARTIFACTDIR)
+	mkdir -p "$@"
+
+$(ARTIFACTDIR)/bash_completion:
+	$(MAKE) zrepl-bin GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH)
+	artifacts/zrepl-$(GOHOSTOS)-$(GOHOSTARCH) bashcomp "$@"
+
+$(ARTIFACTDIR)/go_env.txt:
+	$(GO_ENV_VARS) $(GO) env > $@
+
+docs: $(ARTIFACTDIR)/docs
+	make -C docs \
+		html \
+		BUILDDIR=../artifacts/docs \
+
+docs-clean:
+	make -C docs \
+		clean \
+		BUILDDIR=../artifacts/docs
+
+$(RELEASE_NOARCH): docs $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt
+	rm -f "$@"
+	tar --mtime='1970-01-01' --sort=name \
+		--transform 's/$(ARTIFACTDIR)/zrepl-$(_ZREPL_VERSION)-noarch/' \
+		--transform 's#dist#zrepl-$(_ZREPL_VERSION)-noarch/dist#' \
+		--transform 's#config/samples#zrepl-$(_ZREPL_VERSION)-noarch/config#' \
+		-acf $@ \
+		$(ARTIFACTDIR)/docs/html \
+		$(ARTIFACTDIR)/bash_completion \
+		$(ARTIFACTDIR)/go_env.txt \
+		dist \
+		config/samples
