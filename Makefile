@@ -26,8 +26,6 @@ GO_BUILDFLAGS := $(GO_MOD_READONLY)
 GO_BUILD := $(GO_ENV_VARS) $(GO) build $(GO_BUILDFLAGS) -ldflags $(GO_LDFLAGS)
 GOLANGCI_LINT := golangci-lint
 
-RELEASE_NOARCH := $(ARTIFACTDIR)/zrepl-noarch.tar
-
 .PHONY: printvars
 printvars:
 	@echo GOOS=$(GOOS)
@@ -35,22 +33,39 @@ printvars:
 
 
 ##################### PRODUCING A RELEASE #############
-.PHONY: release wrapup-and-checksum check-git-clean clean
+.PHONY: release wrapup-and-checksum check-git-clean sign clean
 
 release: clean
  	# no cross-platform support for target test
-	# $(MAKE) test
+	$(MAKE) test
 	$(MAKE) bins-all
-	$(MAKE) $(RELEASE_NOARCH)
-	$(MAKE) check-git-clean
+	$(MAKE) noarch
 	$(MAKE) wrapup-and-checksum
+	$(MAKE) check-git-clean
+ifeq (SIGN, 1)
+	$(make) sign
+endif
 	@echo "ZREPL RELEASE ARTIFACTS AVAILABLE IN artifacts/"
 
 # expects `release` target to have run before
-wrapup-and-checksum: $(ARTIFACTDIR)/* $(RELEASE_NOARCH)
+NOARCH_TARBALL := $(ARTIFACTDIR)/zrepl-noarch.tar
+wrapup-and-checksum:
+	rm -f $(NOARCH_TARBALL)
+	tar --mtime='1970-01-01' --sort=name \
+		--transform 's/$(ARTIFACTDIR)/zrepl-$(_ZREPL_VERSION)-noarch/' \
+		--transform 's#dist#zrepl-$(_ZREPL_VERSION)-noarch/dist#' \
+		--transform 's#config/samples#zrepl-$(_ZREPL_VERSION)-noarch/config#' \
+		-acf $(NOARCH_TARBALL) \
+		$(ARTIFACTDIR)/docs/html \
+		$(ARTIFACTDIR)/bash_completion \
+		$(ARTIFACTDIR)/go_env.txt \
+		dist \
+		config/samples
 	rm -rf "$(ARTIFACTDIR)/release"
 	mkdir -p "$(ARTIFACTDIR)/release"
-	cp -l $^ "$(ARTIFACTDIR)/release"
+	cp -l $(ARTIFACTDIR)/zrepl-* \
+		$(ARTIFACTDIR)/platformtest-* \
+		"$(ARTIFACTDIR)/release"
 	cd "$(ARTIFACTDIR)/release" && sha512sum $$(ls | sort) > sha512sum.txt
 
 check-git-clean:
@@ -65,6 +80,11 @@ check-git-clean:
 			exit 1; \
 		fi; \
 	fi;
+
+sign:
+	gpg -u "89BC 5D89 C845 568B F578  B306 CDBD 8EC8 E27C A5FC" \
+		--armor \
+		--detach-sign $(ARTIFACTDIR)/release/sha512sum.txt 
 
 clean: docs-clean
 	rm -rf "$(ARTIFACTDIR)"
@@ -113,12 +133,16 @@ platformtest: # do not track dependency on platformtest-bin to allow build of pl
 	"$(ARTIFACTDIR)/platformtest-$(GOOS)-$(GOARCH)" -poolname "$(ZREPL_PLATFORMTEST_POOLNAME)" -imagepath "$(ZREPL_PLATFORMTEST_IMAGEPATH)"
 
 ##################### NOARCH #####################
-.PHONY: $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt docs docs-clean $(RELEASE_NOARCH)
+.PHONY: noarch $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt docs docs-clean
+
 
 $(ARTIFACTDIR):
 	mkdir -p "$@"
 $(ARTIFACTDIR)/docs: $(ARTIFACTDIR)
 	mkdir -p "$@"
+
+noarch: $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt docs
+	# pass
 
 $(ARTIFACTDIR)/bash_completion:
 	$(MAKE) zrepl-bin GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH)
@@ -136,16 +160,3 @@ docs-clean:
 	make -C docs \
 		clean \
 		BUILDDIR=../artifacts/docs
-
-$(RELEASE_NOARCH): docs $(ARTIFACTDIR)/bash_completion $(ARTIFACTDIR)/go_env.txt
-	rm -f "$@"
-	tar --mtime='1970-01-01' --sort=name \
-		--transform 's/$(ARTIFACTDIR)/zrepl-$(_ZREPL_VERSION)-noarch/' \
-		--transform 's#dist#zrepl-$(_ZREPL_VERSION)-noarch/dist#' \
-		--transform 's#config/samples#zrepl-$(_ZREPL_VERSION)-noarch/config#' \
-		-acf $@ \
-		$(ARTIFACTDIR)/docs/html \
-		$(ARTIFACTDIR)/bash_completion \
-		$(ARTIFACTDIR)/go_env.txt \
-		dist \
-		config/samples
